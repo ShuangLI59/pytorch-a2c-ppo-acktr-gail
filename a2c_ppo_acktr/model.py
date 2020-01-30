@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 from a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian
 from a2c_ppo_acktr.utils import init
-
+import pdb
 
 class Flatten(nn.Module):
     def forward(self, x):
@@ -15,6 +15,8 @@ class Flatten(nn.Module):
 class Policy(nn.Module):
     def __init__(self, obs_shape, action_space, base=None, base_kwargs=None):
         super(Policy, self).__init__()
+
+
         if base_kwargs is None:
             base_kwargs = {}
         if base is None:

@@ -1,8 +1,9 @@
 import os
-
+import pdb
 import gym
 import numpy as np
 import torch
+import sys
 from gym.spaces.box import Box
 
 from baselines import bench
@@ -27,6 +28,29 @@ try:
     import pybullet_envs
 except ImportError:
     pass
+
+
+
+
+## ----------------------------------------------------------------------------
+home_path = os.getcwd()
+home_path = '/'.join(home_path.split('/')[:-2])
+print(home_path)
+sys.path.append(home_path+'/vh_mdp')
+sys.path.append(home_path+'/virtualhome')
+sys.path.append(home_path+'/vh_multiagent_models')
+
+
+import utils
+from simulation.evolving_graph.utils import load_graph_dict
+from profilehooks import profile
+import pickle
+sys.argv = ['-f']
+
+from agents import MCTS_agent, PG_agent
+from envs.envs import UnityEnv
+## ----------------------------------------------------------------------------
+
 
 
 def make_env(env_id, seed, rank, log_dir, allow_early_resets):
@@ -82,28 +106,35 @@ def make_vec_envs(env_name,
                   device,
                   allow_early_resets,
                   num_frame_stack=None):
-    envs = [
-        make_env(env_name, seed, i, log_dir, allow_early_resets)
-        for i in range(num_processes)
-    ]
 
-    if len(envs) > 1:
-        envs = ShmemVecEnv(envs, context='fork')
+
+    if env_name=='virtualhome':
+        envs = UnityEnv(num_agents=2)
+        # envs = [UnityEnv(num_agents=2) for i in range(num_processes)]
+
     else:
-        envs = DummyVecEnv(envs)
+        envs = [
+            make_env(env_name, seed, i, log_dir, allow_early_resets)
+            for i in range(num_processes)
+        ]
 
-    if len(envs.observation_space.shape) == 1:
-        if gamma is None:
-            envs = VecNormalize(envs, ret=False)
+        if len(envs) > 1:
+            envs = ShmemVecEnv(envs, context='fork')
         else:
-            envs = VecNormalize(envs, gamma=gamma)
+            envs = DummyVecEnv(envs)
 
-    envs = VecPyTorch(envs, device)
+        if len(envs.observation_space.shape) == 1:
+            if gamma is None:
+                envs = VecNormalize(envs, ret=False)
+            else:
+                envs = VecNormalize(envs, gamma=gamma)
 
-    if num_frame_stack is not None:
-        envs = VecPyTorchFrameStack(envs, num_frame_stack, device)
-    elif len(envs.observation_space.shape) == 3:
-        envs = VecPyTorchFrameStack(envs, 4, device)
+        envs = VecPyTorch(envs, device)
+
+        if num_frame_stack is not None:
+            envs = VecPyTorchFrameStack(envs, num_frame_stack, device)
+        elif len(envs.observation_space.shape) == 3:
+            envs = VecPyTorchFrameStack(envs, 4, device)
 
     return envs
 
@@ -143,7 +174,7 @@ class TransposeImage(TransposeObs):
         Transpose observation space for images
         """
         super(TransposeImage, self).__init__(env)
-        assert len(op) == 3, f"Error: Operation, {str(op)}, must be dim3"
+        assert len(op) == 3, "Error: Operation, " + str(op) + ", must be dim3"
         self.op = op
         obs_shape = self.observation_space.shape
         self.observation_space = Box(
@@ -231,8 +262,10 @@ class VecPyTorchFrameStack(VecEnvWrapper):
 
     def step_wait(self):
         obs, rews, news, infos = self.venv.step_wait()
-        self.stacked_obs[:, :-self.shape_dim0] = \
-            self.stacked_obs[:, self.shape_dim0:]
+
+        
+        tem = self.stacked_obs[:, self.shape_dim0:].clone()
+        self.stacked_obs[:, :-self.shape_dim0] = tem
         for (i, new) in enumerate(news):
             if new:
                 self.stacked_obs[i] = 0

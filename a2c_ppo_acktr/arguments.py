@@ -1,7 +1,7 @@
 import argparse
 
 import torch
-
+import pdb
 
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
@@ -72,11 +72,27 @@ def get_args():
         action='store_true',
         default=False,
         help="sets flags for determinism when using CUDA (potentially slow!)")
+
+
+
+
+
+    parser.add_argument(
+        '--env-name',
+        default='PongNoFrameskip-v4',
+        help='environment to train on (default: PongNoFrameskip-v4)')
+    
     parser.add_argument(
         '--num-processes',
         type=int,
-        default=16,
+        default=1,
         help='how many training CPU processes to use (default: 16)')
+
+
+
+
+
+
     parser.add_argument(
         '--num-steps',
         type=int,
@@ -118,10 +134,6 @@ def get_args():
         default=10e6,
         help='number of environment steps to train (default: 10e6)')
     parser.add_argument(
-        '--env-name',
-        default='PongNoFrameskip-v4',
-        help='environment to train on (default: PongNoFrameskip-v4)')
-    parser.add_argument(
         '--log-dir',
         default='/tmp/gym/',
         help='directory to save agent logs (default: /tmp/gym)')
@@ -157,5 +169,5 @@ def get_args():
     if args.recurrent_policy:
         assert args.algo in ['a2c', 'ppo'], \
             'Recurrent policy is not implemented for ACKTR'
-
+    
     return args
